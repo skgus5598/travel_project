@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+   PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+   
+<mapper namespace="com.care.root.mybatis.qna.QnAMapper">
+
+	<resultMap  id="qna" type="com.care.root.qna.dto.QnADTO">
+	   <id property="qnaNo" column="qna_no"/>
+	   <result property="qnaTitle" column="qna_title"/>
+	   <result property="qnaContent" column="qna_content"/>
+	   <result property="qnaHit" column="qna_hit"/>
+	   <result property="saveDate" column="savedate"/>
+	   <result property="qnaPwd" column="qna_pwd"/>
+	   <result property="id" column="id"/>
+    </resultMap>
+    <resultMap  id="qnaReply" type="com.care.root.qna.dto.QnARepDTO">
+	   <result property="id" column="id"/>
+	   <result property="qrContent" column="qr_content"/>
+	   <result property="qrWriteGroup" column="qr_write_group"/>
+	   <result property="saveDate" column="savedate"/>
+	   <result property="qrId" column="qr_id"/>
+    </resultMap>
+<!--   
+    <select id="qnaAllList" resultMap="qna">
+    	select B.* from(select rownum rn, A.* from
+    	(select * from qna_board order by qna_no desc)A)B where rn between #{s} and #{e}
+    </select>
+-->    
+    <select id="qnaAllList" resultMap="qna">
+       select B.* from(select rownum rn, A.* from
+       <choose>
+          <when test='searchOption == "all"'> <!-- 전체검색 -->
+	      	(select * from qna_board where qna_title like '%' || #{keyword} || '%' 
+	      	or id like '%' || #{keyword} || '%' or qna_content like '%' || #{keyword} || '%'
+	      	order by qna_no desc)A)B where rn between #{s} and #{e} and id not in('admin')   
+          </when>
+          <when test='searchOption == "tc"'> <!-- 제목+내용 -->
+             (select * from qna_board where qna_title like '%' || #{keyword} || '%' 
+	         or qna_content like '%' || #{keyword} || '%' order by qna_no desc)A)
+             B where rn between #{s} and #{e} and id not in('admin') 
+          </when>
+          <when test='searchOption == "title"'> <!-- 제목 -->
+             (select * from qna_board where qna_title like '%' || #{keyword} || '%' 
+          	 order by qna_no desc)A) B where rn between #{s} and #{e} and id not in('admin') 
+          </when>
+          <when test='searchOption == "id"'> <!-- 작성자 -->
+             (select * from qna_board where id like '%' || #{keyword} || '%'  
+          	 order by qna_no desc)A)B where rn between #{s} and #{e} and id not in('admin') 
+          </when>
+          <when test='searchOption == "content"'> <!-- 내용 -->
+             (select * from qna_board where qna_content like '%' || #{keyword} || '%'  
+          	 order by qna_no desc)A)B where rn between #{s} and #{e} and id not in('admin') 
+          </when>
+          <otherwise> <!-- 검색기능 사용 x -->
+	         (select * from qna_board where id not in('admin') order by qna_no desc)A)B 
+	         where rn between #{s} and #{e}
+          </otherwise>
+       </choose>
+    </select> 
+   
+	<select id="getDataCount" resultType="Integer">
+		select count(*) from qna_board
+    	<choose>
+    		<when test='searchOption == "all"'> <!-- 전체검색 -->
+		      	where (qna_title like '%' || #{keyword} || '%' or id like '%' || #{keyword} || '%' 
+		      	or qna_content like '%' || #{keyword} || '%') and id not in('admin')
+          	</when>
+    		<when test='searchOption == "tc"'>
+          		where (qna_title like '%' || #{keyword} || '%'
+          		or qna_content like '%' || #{keyword} || '%') and id not in('admin')
+          	</when>
+    		<when test='searchOption == "title"'>
+          		where (qna_title like '%' || #{keyword} || '%') and id not in('admin')
+          	</when>
+    		<when test='searchOption == "content"'>
+          		where (qna_content like '%' || #{keyword} || '%') and id not in('admin')
+          	</when>
+          	<when test='searchOption == "id"'>
+          		where (id like '%' || #{keyword} || '%') and id not in('admin')
+          	</when>
+          	<otherwise>
+          		where id not in('admin')
+          	</otherwise>
+		</choose>
+	</select>  
+	
+    <select id="repAllList" resultMap="qnaReply">
+    	select distinct qr_write_group from qna_reply
+    </select>
+    
+    <insert id="writeSave">
+    	insert into qna_board(qna_no,qna_title,qna_content,qna_pwd,id)
+    	values(qna_board_SEQ.nextval,#{qnaTitle},#{qnaContent},#{qnaPwd},#{id})
+    </insert>
+    
+    <select id="contentView" resultMap="qna">
+    	select * from qna_board where qna_no = #{qnaNo}
+    </select>
+    
+    <update id="upHit">
+    	update qna_board set qna_hit = qna_hit + 1 where qna_no = #{qnaNo}
+    </update>
+        
+    <update id="modify">
+    	update qna_board set qna_title = #{qnaTitle}, qna_content = #{qnaContent}
+    	where qna_no = #{qnaNo}
+    </update>
+    
+    <delete id="delete">
+    	delete from qna_board where qna_no = #{qnaNo}
+    </delete>
+    
+    <insert id="addReply">
+    	insert into qna_reply(id,qr_content,qr_write_group,qr_id)
+    	values(#{id},#{qrContent},#{qrWriteGroup},qna_reply_SEQ.nextval)
+    </insert>
+    
+    <select id="getReply" resultMap="qnaReply">
+     	select * from qna_reply where qr_write_group = #{qrWriteGroup}
+     	order by savedate desc
+    </select>
+    
+    <update id="repModify">
+    	update qna_reply set qr_content = #{qrContent} where qr_id = #{qrId}
+    </update>
+    
+    <delete id="repDelete">
+    	delete from qna_reply where qr_id = #{qrId}
+    </delete>
+    
+    <select id="noticeList" resultMap="qna">
+    	select * from qna_board where id = 'admin' order by qna_no desc
+    </select>
+
+</mapper> 
